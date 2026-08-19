@@ -16,7 +16,11 @@ import { renderReports, runExport, runExportPdf } from "./views/reports";
 import { renderUsers, renderUserForm, renderPermissionsForm, renderResetPasswordForm } from "./views/users";
 import { renderAuditTrail } from "./views/auditTrail";
 import { renderModal } from "./views/modal";
+<<<<<<< HEAD
 import { printMovementForm, printMaintenanceForm, printDamageForm } from "./lib/print";
+=======
+import { printMovementForm, printMaintenanceForm } from "./lib/print";
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
 import { callEdgeFunction } from "./lib/supabase";
 import { MODULES } from "./lib/types";
 import type { ViewName } from "./lib/types";
@@ -153,6 +157,7 @@ document.addEventListener("click", async (e) => {
       if (!record) return;
       if (mod === "movements") printMovementForm(record);
       else if (mod === "maintenance") printMaintenanceForm(record);
+<<<<<<< HEAD
       else if (mod === "damage") printDamageForm(record);
       break;
     }
@@ -176,6 +181,8 @@ document.addEventListener("click", async (e) => {
         btn.innerHTML = original;
         btn.disabled = false;
       }
+=======
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
       break;
     }
 

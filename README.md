@@ -53,11 +53,14 @@ yang tidak dibenarkan.
 └── .github/workflows/deploy.yml    # build + deploy automatik ke GitHub Pages
 ```
 
+<<<<<<< HEAD
 ## Kemaskini v1.2.0 (Ogos 2026) — Cara Pasang
 
 1. **Jalankan SQL tambahan**: `sql/06_kemaskini_v3.sql` dalam SQL Editor Supabase (selamat, tidak memadam data).
 2. **Gantikan fail projek**: sama seperti kemaskini v1.1.0 - salin semua fail dalam pakej ke atas folder projek sedia ada, commit & push melalui GitHub Desktop.
 
+=======
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
 ## Kemaskini v1.1.0 (Ogos 2026) — Cara Pasang
 
 Jika anda sudah menjalankan sistem versi asal (v1.0.0), ikut langkah ini untuk naik taraf tanpa kehilangan data:

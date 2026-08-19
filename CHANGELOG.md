@@ -1,5 +1,6 @@
 # Changelog
 
+<<<<<<< HEAD
 ## v1.3.0 — Muat Turun Word (.docx) Boleh Sunting (Ogos 2026)
 
 ### Ditambah
@@ -19,6 +20,8 @@
 - Medan "Jenis" pada KEW.PA-15 (jenis/model peralatan) tiada dalam struktur data aset semasa - dipaparkan kosong pada cetakan. Boleh ditambah pada kemaskini akan datang jika diperlukan.
 - Rekod Pergerakan kekal 1 aset = 1 rekod (lihat nota v1.1.0).
 
+=======
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
 ## v1.1.0 — Kemaskini Reka Bentuk & Borang Rasmi (Ogos 2026)
 
 ### Ditambah

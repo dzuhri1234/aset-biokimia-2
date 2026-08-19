@@ -45,10 +45,13 @@ const MODULE_DEFS: Record<TxModule, ModuleDef> = {
       { name: "expected_return_date", label: "Tarikh Dijangka Pulang", type: "date" },
       { name: "actual_return_date", label: "Tarikh Pulang Sebenar", type: "date" },
       { name: "status", label: "Status Pergerakan", type: "select", options: ["Dalam Pergerakan", "Dipulangkan"] },
+<<<<<<< HEAD
       { name: "borrower_position", label: "Jawatan Peminjam", type: "text" },
       { name: "returner_name", label: "Nama Pemulang", type: "text" },
       { name: "returner_position", label: "Jawatan Pemulang", type: "text" },
       { name: "notes", label: "Catatan", type: "textarea", span2: true },
+=======
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
       { name: "approval_status", label: "Status Kelulusan", type: "select", options: ["Menunggu Kelulusan", "Diluluskan", "Tidak Diluluskan"], sectionBefore: "Kelulusan & Serah Terima" },
       { name: "approved_by_name", label: "Nama Pelulus", type: "text" },
       { name: "approved_by_position", label: "Jawatan Pelulus", type: "text" },
@@ -93,6 +96,7 @@ const MODULE_DEFS: Record<TxModule, ModuleDef> = {
   damage: {
     title: "Laporan Kerosakan Aset (KEW.PA-10)",
     addLabel: "+ Laporan Kerosakan",
+<<<<<<< HEAD
     printable: true,
     editable: true,
     fields: [
@@ -101,6 +105,11 @@ const MODULE_DEFS: Record<TxModule, ModuleDef> = {
       { name: "report_date", label: "Tarikh Kerosakan", type: "date", required: true },
       { name: "reporter_name", label: "Nama Pengadu", type: "text" },
       { name: "reporter_position", label: "Jawatan Pengadu", type: "text" },
+=======
+    editable: true,
+    fields: [
+      { name: "damage_type", label: "Jenis Kerosakan", type: "text", required: true },
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
       { name: "priority", label: "Tahap Keutamaan", type: "select", options: ["Sederhana", "Tinggi"] },
       { name: "notes", label: "Perihal Kerosakan", type: "textarea", span2: true },
       { name: "repair_cost", label: "Anggaran Kos Penyelenggaraan (RM)", type: "number", sectionBefore: "Bahagian II - Pegawai Aset / Pegawai Teknikal" },
@@ -109,12 +118,18 @@ const MODULE_DEFS: Record<TxModule, ModuleDef> = {
       { name: "technical_officer_date", label: "Tarikh Disahkan", type: "date" },
       { name: "technical_notes", label: "Syor Dan Ulasan", type: "textarea", span2: true },
       { name: "status", label: "Status Pembaikan", type: "select", options: ["Dilaporkan", "Dalam Pembaikan", "Selesai"] },
+<<<<<<< HEAD
       { name: "resolved_date", label: "Tarikh Selesai", type: "date" },
       { name: "decision_status", label: "Keputusan Ketua Jabatan", type: "select", options: ["Belum Diputuskan", "Diluluskan", "Tidak Diluluskan"], sectionBefore: "Bahagian III - Keputusan Ketua Jabatan/Bahagian/Seksyen/Unit" },
       { name: "decision_by_name", label: "Nama Ketua Jabatan", type: "text" },
       { name: "decision_by_position", label: "Jawatan", type: "text" },
       { name: "decision_date", label: "Tarikh Keputusan", type: "date" },
       { name: "decision_notes", label: "Ulasan Keputusan", type: "textarea", span2: true },
+=======
+      { name: "repair_cost", label: "Kos Pembaikan (RM)", type: "number" },
+      { name: "resolved_date", label: "Tarikh Selesai", type: "date" },
+      { name: "notes", label: "Catatan", type: "textarea", span2: true },
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
     ],
     columns: [
       { key: "asset", label: "Aset", render: (r) => assetLabel(r.asset_id) },
@@ -301,7 +316,11 @@ export function renderTxView(mod: TxModule, record: any): string {
           <p class="${css({ fontSize: "xs", fontWeight: "semibold", color: "slate.500", mb: "1" })}">${f.label}</p>
           <div class="${css({ fontSize: "sm", color: "slate.700", bg: "slate.50", p: "3", borderRadius: "lg", whiteSpace: "pre-wrap" })}">${escapeHTML(record[f.name]) || "-"}</div>
         </div>`).join("")}
+<<<<<<< HEAD
       ${def.printable ? `<div class="${formActions}"><button type="button" data-action="downloadTxWord" data-mod="${mod}" data-id="${record.id}" class="${buttonRecipe({ variant: "outline" })}">&#128196; Muat Turun Word (.docx)</button><button type="button" data-action="printTxRecord" data-mod="${mod}" data-id="${record.id}" class="${buttonRecipe({ variant: "outline" })}">&#128438; Cetak Borang</button></div>` : ""}
+=======
+      ${def.printable ? `<div class="${formActions}"><button type="button" data-action="printTxRecord" data-mod="${mod}" data-id="${record.id}" class="${buttonRecipe({ variant: "outline" })}">&#128438; Cetak Borang</button></div>` : ""}
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
     </div>`;
 }
 

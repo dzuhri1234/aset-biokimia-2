@@ -67,11 +67,16 @@ export interface Movement {
   expected_return_date: string | null; actual_return_date: string | null;
   status: "Dalam Pergerakan" | "Dipulangkan";
   // Medan selaras borang rasmi KEW.PA-9
+<<<<<<< HEAD
   application_no: number | null;
   applicant_name: string | null; applicant_position: string | null; division: string | null;
   used_at: string | null; issuer_name: string | null;
   borrower_position: string | null; returner_name: string | null; returner_position: string | null;
   notes: string | null;
+=======
+  applicant_name: string | null; applicant_position: string | null; division: string | null;
+  used_at: string | null; issuer_name: string | null;
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
   approval_status: "Menunggu Kelulusan" | "Diluluskan" | "Tidak Diluluskan";
   approved_by_name: string | null; approved_by_position: string | null; approved_date: string | null;
   received_by_name: string | null; received_by_position: string | null; received_date: string | null;

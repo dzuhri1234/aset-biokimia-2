@@ -111,6 +111,7 @@ drop trigger if exists trg_assign_unique_id on assets;
 create trigger trg_assign_unique_id
   before insert on assets
   for each row execute function assign_unique_id();
+<<<<<<< HEAD
 
 -- ------------------------------------------------------------
 -- No. Permohonan (application_no) untuk borang KEW.PA-9, dijana
@@ -132,3 +133,5 @@ drop trigger if exists trg_assign_movement_application_no on movements;
 create trigger trg_assign_movement_application_no
   before insert on movements
   for each row execute function assign_movement_application_no();
+=======
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a

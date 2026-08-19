@@ -106,16 +106,22 @@ create table if not exists movements (
   actual_return_date date,
   status text not null default 'Dalam Pergerakan' check (status in ('Dalam Pergerakan','Dipulangkan')),
   -- Medan selaras borang rasmi KEW.PA-9
+<<<<<<< HEAD
   application_no bigint,
+=======
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
   applicant_name text,
   applicant_position text,
   division text,
   used_at text,
   issuer_name text,
+<<<<<<< HEAD
   borrower_position text,
   returner_name text,
   returner_position text,
   notes text,
+=======
+>>>>>>> 4700a3ba3df6a883824d4ff3e482cc7b69a2679a
   approval_status text not null default 'Menunggu Kelulusan' check (approval_status in ('Menunggu Kelulusan','Diluluskan','Tidak Diluluskan')),
   approved_by_name text,
   approved_by_position text,
