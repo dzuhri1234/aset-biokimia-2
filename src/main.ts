@@ -1,19 +1,22 @@
 import "./styles.css";
 import { supabase } from "./lib/supabase";
 import { STATE, rerender, bindRender, canEdit, isAdmin } from "./lib/state";
-import { initAuth, handleLogin, handleLogout } from "./lib/auth";
+import { initAuth, handleLogin, handleLogout, handleForgotPassword, handleUpdatePasswordAfterRecovery } from "./lib/auth";
 import { fetchAllData } from "./lib/data";
 import { showToast, debounce } from "./lib/utils";
-import { renderLogin, setLoginError, setLoginLoading } from "./views/login";
+import { renderLogin, setLoginError, setLoginLoading, setForgotPasswordSent } from "./views/login";
 import { renderShell } from "./views/shell";
 import { renderDashboard } from "./views/dashboard";
 import { renderAssetsList, renderAssetForm, renderAssetProfile } from "./views/assets";
-import { renderTxModule, renderTxForm, getTxModuleTitle } from "./views/transactions";
+import { renderTxModule, renderTxForm, renderTxView, getTxModuleTitle } from "./views/transactions";
+import type { TxModule } from "./views/transactions";
 import { renderMasterData, renderMasterForm, getMasterTitle } from "./views/masterData";
-import { renderReports, runExport } from "./views/reports";
+import type { MasterType } from "./views/masterData";
+import { renderReports, runExport, runExportPdf } from "./views/reports";
 import { renderUsers, renderUserForm, renderPermissionsForm, renderResetPasswordForm } from "./views/users";
 import { renderAuditTrail } from "./views/auditTrail";
 import { renderModal } from "./views/modal";
+import { printMovementForm, printMaintenanceForm, printDamageForm } from "./lib/print";
 import { callEdgeFunction } from "./lib/supabase";
 import { MODULES } from "./lib/types";
 import type { ViewName } from "./lib/types";
@@ -25,7 +28,7 @@ function render() {
     app.innerHTML = `<div style="height:100vh;display:flex;align-items:center;justify-content:center;color:#64748b;font-family:sans-serif;">Menyambung ke pangkalan data...</div>`;
     return;
   }
-  if (!STATE.session || !STATE.profile) {
+  if (!STATE.session || !STATE.profile || STATE.authMode !== "login") {
     app.innerHTML = renderLogin();
     return;
   }
@@ -46,14 +49,9 @@ function render() {
   }
 
   let html = `<div style="display:flex;height:100vh;overflow:hidden;">${renderShell(content)}</div>`;
-
-  if (STATE.modal) {
-    html += buildModalHtml();
-  }
-
+  if (STATE.modal) html += buildModalHtml();
   app.innerHTML = html;
 
-  // Kekalkan fokus kursor pada kotak carian selepas render semula
   if (STATE.view === "assets") {
     const el = document.getElementById("assetSearchInput") as HTMLInputElement | null;
     if (el && document.activeElement !== el && (window as any).__wasSearchFocused) {
@@ -68,10 +66,18 @@ function buildModalHtml(): string {
   switch (m.type) {
     case "assetForm":
       return renderModal(m.id ? "Kemaskini Aset" : "Daftar Aset Baharu", renderAssetForm(m.id));
-    case "txForm":
-      return renderModal(getTxModuleTitle(m.mod as any), renderTxForm(m.mod as any, m.presetAssetId));
+    case "txForm": {
+      const mod = m.mod as TxModule;
+      const record = m.id ? (STATE.data as any)[mod].find((r: any) => r.id === m.id) : null;
+      return renderModal((record ? "Kemaskini - " : "") + getTxModuleTitle(mod), renderTxForm(mod, m.presetAssetId, record));
+    }
+    case "txView": {
+      const mod = m.mod as TxModule;
+      const record = (STATE.data as any)[mod].find((r: any) => r.id === m.id);
+      return renderModal(getTxModuleTitle(mod), record ? renderTxView(mod, record) : "Rekod tidak dijumpai.");
+    }
     case "masterForm":
-      return renderModal(getMasterTitle(m.masterType as any), renderMasterForm(m.masterType as any));
+      return renderModal(getMasterTitle(m.masterType as MasterType, !!m.id), renderMasterForm(m.masterType as MasterType, m.id));
     case "userForm":
       return renderModal("Tambah Pengguna Baharu", renderUserForm());
     case "permissionsForm":
@@ -94,13 +100,18 @@ document.addEventListener("click", async (e) => {
   const action = target.dataset.action;
 
   switch (action) {
-    case "navigate":
+    case "navigate": {
       STATE.view = target.dataset.view as ViewName;
       STATE.modal = null;
       STATE.sidebarOpen = false;
-      if (STATE.view === "assets") STATE.assetPage = 1;
+      if (target.dataset.statusfilter !== undefined) {
+        STATE.filters.status = target.dataset.statusfilter;
+        STATE.assetPage = 1;
+      }
+      if (STATE.view === "assets" && target.dataset.statusfilter === undefined) STATE.assetPage = 1;
       rerender();
       break;
+    }
     case "openSidebar": STATE.sidebarOpen = true; rerender(); break;
     case "closeSidebar": STATE.sidebarOpen = false; rerender(); break;
     case "closeModal":
@@ -114,6 +125,13 @@ document.addEventListener("click", async (e) => {
       STATE.view = "assetProfile";
       rerender();
       break;
+    case "backToAssetsList":
+      STATE.view = "assets";
+      rerender();
+      break;
+    case "printAssetProfile":
+      window.print();
+      break;
     case "openAssetForm":
       if (!canEdit("assets")) return;
       STATE.modal = { type: "assetForm", id: target.dataset.id || null };
@@ -121,21 +139,56 @@ document.addEventListener("click", async (e) => {
       break;
 
     case "openTxForm":
-      STATE.modal = { type: "txForm", mod: target.dataset.mod, presetAssetId: STATE.selectedAssetId };
+      STATE.modal = { type: "txForm", mod: target.dataset.mod, id: target.dataset.id || null, presetAssetId: STATE.selectedAssetId };
       rerender();
       break;
+    case "openTxView":
+      STATE.modal = { type: "txView", mod: target.dataset.mod, id: target.dataset.id };
+      rerender();
+      break;
+    case "printTxRecord": {
+      const mod = target.dataset.mod as TxModule;
+      const id = target.dataset.id!;
+      const record = (STATE.data as any)[mod].find((r: any) => r.id === id);
+      if (!record) return;
+      if (mod === "movements") printMovementForm(record);
+      else if (mod === "maintenance") printMaintenanceForm(record);
+      else if (mod === "damage") printDamageForm(record);
+      break;
+    }
+    case "downloadTxWord": {
+      const mod = target.dataset.mod as TxModule;
+      const id = target.dataset.id!;
+      const record = (STATE.data as any)[mod].find((r: any) => r.id === id);
+      if (!record) return;
+      const btn = target as HTMLButtonElement;
+      const original = btn.innerHTML;
+      btn.innerHTML = "Menjana...";
+      (btn as HTMLButtonElement).disabled = true;
+      try {
+        const wordExport = await import("./lib/wordExport");
+        if (mod === "movements") await wordExport.downloadMovementDocx(record);
+        else if (mod === "maintenance") await wordExport.downloadMaintenanceDocx(record);
+        else if (mod === "damage") await wordExport.downloadDamageDocx(record);
+      } catch (err: any) {
+        showToast("Gagal menjana fail Word: " + (err.message || "ralat tidak diketahui"), "error");
+      } finally {
+        btn.innerHTML = original;
+        btn.disabled = false;
+      }
+      break;
+    }
 
     case "openMasterForm":
-      STATE.modal = { type: "masterForm", masterType: target.dataset.type };
+      STATE.modal = { type: "masterForm", masterType: target.dataset.type, id: target.dataset.id || null };
       rerender();
       break;
 
     case "assetPagePrev": STATE.assetPage--; rerender(); break;
     case "assetPageNext": STATE.assetPage++; rerender(); break;
 
-    case "exportCsv":
-      runExport(target.dataset.report!);
-      break;
+    case "exportCsv": runExport(target.dataset.report!); break;
+    case "exportPdf": runExportPdf(target.dataset.report!); break;
 
     case "openUserForm":
       STATE.modal = { type: "userForm" };
@@ -171,6 +224,30 @@ document.addEventListener("click", async (e) => {
       }
       break;
     }
+
+    case "showForgotPassword":
+      STATE.authMode = "forgotPassword";
+      setLoginError("");
+      setForgotPasswordSent(false);
+      rerender();
+      break;
+    case "backToLogin":
+      STATE.authMode = "login";
+      setLoginError("");
+      rerender();
+      break;
+
+    case "selectTxAsset": {
+      const id = target.dataset.id!;
+      const label = target.dataset.label || "";
+      const input = document.getElementById("txAssetSearchInput") as HTMLInputElement | null;
+      const hidden = document.getElementById("txAssetIdHidden") as HTMLInputElement | null;
+      const results = document.getElementById("txAssetSearchResults") as HTMLDivElement | null;
+      if (input) input.value = label;
+      if (hidden) hidden.value = id;
+      if (results) results.style.display = "none";
+      break;
+    }
   }
 });
 
@@ -180,6 +257,9 @@ document.addEventListener("input", (e) => {
     (window as any).__wasSearchFocused = true;
     debouncedSearch((target as HTMLInputElement).value);
   }
+  if (target.dataset.action === "txAssetSearch") {
+    debouncedTxAssetSearch((target as HTMLInputElement).value);
+  }
 });
 const debouncedSearch = debounce((val: string) => {
   STATE.filters.search = val;
@@ -187,12 +267,65 @@ const debouncedSearch = debounce((val: string) => {
   rerender();
 }, 250);
 
+const debouncedTxAssetSearch = debounce((val: string) => {
+  const results = document.getElementById("txAssetSearchResults") as HTMLDivElement | null;
+  const hidden = document.getElementById("txAssetIdHidden") as HTMLInputElement | null;
+  if (!results) return;
+  const q = val.trim().toLowerCase();
+  if (!q) { results.style.display = "none"; if (hidden) hidden.value = ""; return; }
+  const matches = STATE.data.assets.filter((a) =>
+    (a.registration_no || "").toLowerCase().includes(q) ||
+    (a.unique_id || "").toLowerCase().includes(q) ||
+    (a.description || "").toLowerCase().includes(q)
+  ).slice(0, 20);
+  if (!matches.length) {
+    results.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:#94a3b8;">Tiada aset dijumpai.</div>`;
+    results.style.display = "block";
+    return;
+  }
+  results.innerHTML = matches.map((a) => {
+    const label = `${a.registration_no || a.unique_id} — ${a.description}`;
+    const safeLabel = label.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    return `<button type="button" data-action="selectTxAsset" data-id="${a.id}" data-label="${safeLabel}" style="display:block;width:100%;text-align:left;padding:8px 12px;font-size:13px;border:none;background:white;cursor:pointer;border-bottom:1px solid #f1f5f9;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+      <span style="font-weight:600;">${(a.registration_no || a.unique_id).replace(/</g, "&lt;")}</span>
+      <span style="color:#64748b;"> — ${a.description.replace(/</g, "&lt;").substring(0, 50)}</span>
+    </button>`;
+  }).join("");
+  results.style.display = "block";
+  if (hidden) hidden.value = ""; // pilihan mesti disahkan melalui klik, elak simpan tanpa memilih
+}, 200);
+
 document.addEventListener("change", (e) => {
   const target = e.target as HTMLElement;
   if (target.dataset.action === "assetStatusFilter") {
     STATE.filters.status = (target as HTMLSelectElement).value;
     STATE.assetPage = 1;
     rerender();
+  }
+  if (target.dataset.action === "assetLocationFilter") {
+    STATE.filters.location = (target as HTMLSelectElement).value;
+    STATE.assetPage = 1;
+    rerender();
+  }
+  if (target.dataset.action === "maintenanceStatusFilter") {
+    STATE.maintenanceStatusFilter = (target as HTMLSelectElement).value;
+    rerender();
+  }
+  if (target.id === "assetLocationSelect") {
+    const locId = (target as HTMLSelectElement).value;
+    const loc = STATE.data.locations.find((l) => l.id === locId);
+    const codeField = document.getElementById("assetPlacementCode") as HTMLInputElement | null;
+    if (codeField) codeField.value = loc?.code || "";
+  }
+  if (target.id === "assetPhotoInput") {
+    const file = (target as HTMLInputElement).files?.[0];
+    if (file) {
+      const preview = document.getElementById("assetPhotoPreview");
+      if (preview) {
+        const url = URL.createObjectURL(file);
+        preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" />`;
+      }
+    }
   }
 });
 
@@ -205,6 +338,8 @@ document.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   if (form.id === "loginForm") return void onLoginSubmit(form);
+  if (form.id === "forgotForm") return void onForgotSubmit(form);
+  if (form.id === "recoveryForm") return void onRecoverySubmit(form);
 
   const formType = form.dataset.form;
   const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
@@ -238,38 +373,70 @@ async function onLoginSubmit(form: HTMLFormElement) {
     setLoginError("E-mel atau kata laluan tidak sah.");
     rerender();
   }
-  // Jika berjaya, onAuthStateChange (lib/auth.ts) akan mengendalikan seterusnya.
+}
+
+async function onForgotSubmit(form: HTMLFormElement) {
+  const email = (form.querySelector("#forgotEmail") as HTMLInputElement).value.trim();
+  setLoginLoading(true); setLoginError("");
+  rerender();
+  const err = await handleForgotPassword(email);
+  setLoginLoading(false);
+  if (err) { setLoginError(err); rerender(); return; }
+  setForgotPasswordSent(true);
+  rerender();
+}
+
+async function onRecoverySubmit(form: HTMLFormElement) {
+  const password = (form.querySelector("#recoveryPassword") as HTMLInputElement).value;
+  setLoginLoading(true); setLoginError("");
+  rerender();
+  const err = await handleUpdatePasswordAfterRecovery(password);
+  setLoginLoading(false);
+  if (err) { setLoginError(err); rerender(); return; }
+  showToast("Kata laluan berjaya dikemaskini.");
 }
 
 async function onAssetSubmit(form: HTMLFormElement) {
   if (!canEdit("assets")) { showToast("Anda tiada kebenaran untuk tindakan ini.", "error"); return; }
   const fd = new FormData(form);
   const id = form.dataset.id || null;
-
-  const uniqueId = String(fd.get("unique_id") || "").trim();
   const regNo = String(fd.get("registration_no") || "").trim();
 
-  const dupUnique = STATE.data.assets.find((a) => a.id !== id && a.unique_id.toLowerCase() === uniqueId.toLowerCase());
-  if (dupUnique) { showToast(`No. Unik ID "${uniqueId}" telah digunakan.`, "error"); return; }
   if (regNo) {
     const dupReg = STATE.data.assets.find((a) => a.id !== id && (a.registration_no || "").toLowerCase() === regNo.toLowerCase());
     if (dupReg) { showToast(`No. Siri Pendaftaran "${regNo}" telah digunakan.`, "error"); return; }
   }
 
-  const payload = {
-    unique_id: uniqueId,
+  const locationId = String(fd.get("location_id") || "") || null;
+  const location = locationId ? STATE.data.locations.find((l) => l.id === locationId) : null;
+
+  // Muat naik gambar aset jika dipilih
+  let photoUrl: string | null | undefined = undefined;
+  const photoInput = document.getElementById("assetPhotoInput") as HTMLInputElement | null;
+  const file = photoInput?.files?.[0];
+  if (file) {
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${id || "new"}-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("asset-photos").upload(path, file, { upsert: true });
+    if (uploadErr) { showToast("Gagal muat naik gambar: " + uploadErr.message, "error"); return; }
+    const { data: pub } = supabase.storage.from("asset-photos").getPublicUrl(path);
+    photoUrl = pub.publicUrl;
+  }
+
+  const payload: Record<string, unknown> = {
     registration_no: regNo || null,
     description: String(fd.get("description") || "").trim(),
     status: String(fd.get("status") || "MASIH DIGUNAKAN"),
     category_id: String(fd.get("category_id") || "") || null,
-    location_id: String(fd.get("location_id") || "") || null,
+    location_id: locationId,
     pic_id: String(fd.get("pic_id") || "") || null,
     placement_date: String(fd.get("placement_date") || "") || null,
-    placement_code: String(fd.get("placement_code") || "").trim() || null,
+    placement_code: location?.code || null,
     maintenance_required: fd.get("maintenance_required") === "true",
     last_maintenance_year: fd.get("last_maintenance_year") ? Number(fd.get("last_maintenance_year")) : null,
     notes: String(fd.get("notes") || "").trim() || null,
   };
+  if (photoUrl !== undefined) payload.photo_url = photoUrl;
 
   const { error } = id
     ? await supabase.from("assets").update(payload).eq("id", id)
@@ -285,15 +452,24 @@ async function onAssetSubmit(form: HTMLFormElement) {
 async function onTxSubmit(form: HTMLFormElement) {
   const mod = form.dataset.mod as string;
   if (!canEdit(mod as any)) { showToast("Anda tiada kebenaran untuk tindakan ini.", "error"); return; }
+
+  const hiddenAssetId = (document.getElementById("txAssetIdHidden") as HTMLInputElement | null)?.value || "";
+  if (!hiddenAssetId) { showToast("Sila pilih aset daripada senarai cadangan carian.", "error"); return; }
+
   const fd = new FormData(form);
-  const payload: Record<string, unknown> = {};
+  const payload: Record<string, unknown> = { asset_id: hiddenAssetId };
   fd.forEach((value, key) => {
+    if (key === "asset_id") return;
     payload[key] = value === "" ? null : value;
   });
   if ("cost" in payload && payload.cost !== null) payload.cost = Number(payload.cost);
   if ("repair_cost" in payload && payload.repair_cost !== null) payload.repair_cost = Number(payload.repair_cost);
 
-  const { error } = await supabase.from(mod).insert(payload);
+  const recordId = form.dataset.recordid;
+  const { error } = recordId
+    ? await supabase.from(mod).update(payload).eq("id", recordId)
+    : await supabase.from(mod).insert(payload);
+
   if (error) { showToast("Gagal menyimpan: " + error.message, "error"); return; }
   await fetchAllData();
   STATE.modal = null;
@@ -304,6 +480,7 @@ async function onTxSubmit(form: HTMLFormElement) {
 async function onMasterSubmit(form: HTMLFormElement) {
   if (!canEdit("master_data")) { showToast("Anda tiada kebenaran untuk tindakan ini.", "error"); return; }
   const type = form.dataset.type as "locations" | "categories" | "personnel";
+  const id = form.dataset.id || null;
   const fd = new FormData(form);
   const payload: Record<string, unknown> = { name: String(fd.get("name") || "").trim() };
   if (type === "locations") payload.code = String(fd.get("code") || "").trim() || null;
@@ -311,7 +488,9 @@ async function onMasterSubmit(form: HTMLFormElement) {
     payload.position = String(fd.get("position") || "").trim() || null;
     payload.department = String(fd.get("department") || "").trim() || null;
   }
-  const { error } = await supabase.from(type).insert(payload);
+  const { error } = id
+    ? await supabase.from(type).update(payload).eq("id", id)
+    : await supabase.from(type).insert(payload);
   if (error) { showToast("Gagal menyimpan: " + error.message, "error"); return; }
   await fetchAllData();
   STATE.modal = null;
@@ -347,7 +526,6 @@ async function onPermissionsSubmit(form: HTMLFormElement) {
   const fd = new FormData(form);
   const rows = MODULES.map((m) => ({ user_id: userId, module: m, access_level: String(fd.get(`perm_${m}`) || "none") }));
 
-  // padam kebenaran sedia ada bagi pengguna ini, kemudian masukkan semula (upsert mudah)
   const { error: delErr } = await supabase.from("module_permissions").delete().eq("user_id", userId);
   if (delErr) { showToast("Gagal kemaskini: " + delErr.message, "error"); return; }
   const { error: insErr } = await supabase.from("module_permissions").insert(rows);

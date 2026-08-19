@@ -69,6 +69,7 @@ create table if not exists assets (
   category_id uuid references categories(id),    -- Kategori Aset
   last_maintenance_year int,                     -- Tahun Terakhir Selenggara/Pembaikan
   notes text,                                    -- Catatan
+  photo_url text,                                -- Gambar aset (Supabase Storage)
   status text not null default 'MASIH DIGUNAKAN' check (status in
     ('MASIH DIGUNAKAN','ROSAK','CADANG LUPUS','DILUPUSKAN','DIPINJAM','DISELENGGARA')),
   pic_id uuid references personnel(id),          -- Pegawai/PIC semasa
@@ -104,6 +105,24 @@ create table if not exists movements (
   expected_return_date date,
   actual_return_date date,
   status text not null default 'Dalam Pergerakan' check (status in ('Dalam Pergerakan','Dipulangkan')),
+  -- Medan selaras borang rasmi KEW.PA-9
+  application_no bigint,
+  applicant_name text,
+  applicant_position text,
+  division text,
+  used_at text,
+  issuer_name text,
+  borrower_position text,
+  returner_name text,
+  returner_position text,
+  notes text,
+  approval_status text not null default 'Menunggu Kelulusan' check (approval_status in ('Menunggu Kelulusan','Diluluskan','Tidak Diluluskan')),
+  approved_by_name text,
+  approved_by_position text,
+  approved_date date,
+  received_by_name text,
+  received_by_position text,
+  received_date date,
   created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );
@@ -111,13 +130,16 @@ create table if not exists movements (
 create table if not exists maintenance (
   id uuid primary key default gen_random_uuid(),
   asset_id uuid not null references assets(id) on delete cascade,
-  type text not null,
-  vendor text,
+  type text not null check (type in ('Pencegahan','Pembaikan')),  -- Jenis Penyelenggaraan (KEW.PA-15)
+  vendor text,                                    -- Nama Syarikat/Jabatan yang Menyelenggara
+  work_order_no text,                             -- No. Pesanan Kerajaan / No. Kontrak dan Tarikh
   start_date date not null default current_date,
   end_date date,
   cost numeric(12,2) default 0,
   status text not null default 'Dijadualkan' check (status in ('Dijadualkan','Sedang Diselenggara','Selesai')),
-  notes text,
+  notes text,                                     -- Butir-butir Kerja
+  confirmed_by_name text,                         -- Nama pegawai mengesahkan
+  confirmed_by_position text,                     -- Jawatan pegawai mengesahkan
   created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );
@@ -132,6 +154,19 @@ create table if not exists damage (
   repair_cost numeric(12,2),
   resolved_date date,
   notes text,
+  -- Medan selaras borang rasmi KEW.PA-10
+  last_user text,                                  -- Bahagian I: Pengguna Terakhir
+  reporter_name text,                               -- Bahagian I: Nama Pengadu
+  reporter_position text,                           -- Bahagian I: Jawatan Pengadu
+  technical_officer_name text,                      -- Bahagian II: Nama Pegawai Teknikal
+  technical_officer_position text,                  -- Bahagian II: Jawatan Pegawai Teknikal
+  technical_officer_date date,                      -- Bahagian II: Tarikh
+  technical_notes text,                             -- Bahagian II: Syor Dan Ulasan
+  decision_status text not null default 'Belum Diputuskan' check (decision_status in ('Belum Diputuskan','Diluluskan','Tidak Diluluskan')), -- Bahagian III
+  decision_notes text,                              -- Bahagian III: Ulasan
+  decision_by_name text,                            -- Bahagian III: Nama Ketua Jabatan
+  decision_by_position text,                        -- Bahagian III: Jawatan
+  decision_date date,                               -- Bahagian III: Tarikh
   created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );

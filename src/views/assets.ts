@@ -15,7 +15,8 @@ export function renderAssetsList(): string {
       (a.unique_id || "").toLowerCase().includes(search) ||
       getLocationName(a.location_id).toLowerCase().includes(search);
     const matchesStatus = !STATE.filters.status || a.status === STATE.filters.status;
-    return matchesSearch && matchesStatus;
+    const matchesLocation = !STATE.filters.location || a.location_id === STATE.filters.location;
+    return matchesSearch && matchesStatus && matchesLocation;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ASSET_PAGE_SIZE));
@@ -28,8 +29,12 @@ export function renderAssetsList(): string {
     <div class="${card}">
       <div class="${cardHeader}">
         <div class="${css({ display: "flex", gap: "2", flex: "1", flexWrap: "wrap" })}">
-          <input type="text" id="assetSearchInput" data-action="assetSearch" placeholder="Cari nama, no. pendaftaran, ID unik, lokasi..." value="${escapeHTML(STATE.filters.search)}"
-            class="${inputClass}" style="max-width:320px;" />
+          <input type="text" id="assetSearchInput" data-action="assetSearch" placeholder="Cari nama, no. pendaftaran, lokasi..." value="${escapeHTML(STATE.filters.search)}"
+            class="${inputClass}" style="max-width:280px;" />
+          <select data-action="assetLocationFilter" class="${inputClass}" style="width:auto;">
+            <option value="">Semua Lokasi</option>
+            ${STATE.data.locations.map((l) => `<option value="${l.id}" ${STATE.filters.location === l.id ? "selected" : ""}>${escapeHTML(l.name)}</option>`).join("")}
+          </select>
           <select data-action="assetStatusFilter" class="${inputClass}" style="width:auto;">
             <option value="">Semua Status</option>
             ${ASSET_STATUSES.map((s) => `<option value="${s}" ${STATE.filters.status === s ? "selected" : ""}>${s}</option>`).join("")}
@@ -41,7 +46,7 @@ export function renderAssetsList(): string {
         <table class="${table}">
           <thead class="${thead}">
             <tr>
-              <th class="${th}">No. Unik / Pendaftaran</th>
+              <th class="${th}">No. Pendaftaran</th>
               <th class="${th}">Keterangan Aset</th>
               <th class="${th}">Lokasi</th>
               <th class="${th}">Status</th>
@@ -68,7 +73,7 @@ export function renderAssetsList(): string {
 function rowHtml(a: Asset): string {
   return `
     <tr class="${trHover}">
-      <td class="${td}" style="font-family:monospace;font-weight:600;">${escapeHTML(a.unique_id)}${a.registration_no ? `<div style="font-size:11px;color:#94a3b8;">${escapeHTML(a.registration_no)}</div>` : ""}</td>
+      <td class="${td}" style="font-family:monospace;font-weight:600;">${escapeHTML(a.registration_no || "-")}</td>
       <td class="${td}"><p style="font-weight:600;color:#1e293b;">${escapeHTML(a.description)}</p><p style="font-size:12px;color:#64748b;">${escapeHTML(getCategoryName(a.category_id))}</p></td>
       <td class="${td}">${escapeHTML(getLocationName(a.location_id))}</td>
       <td class="${td}"><span class="${badgeRecipe({ tone: statusTone(a.status) })}">${escapeHTML(a.status)}</span></td>
@@ -81,16 +86,26 @@ function rowHtml(a: Asset): string {
 
 export function renderAssetForm(id?: string | null): string {
   const a = id ? STATE.data.assets.find((x) => x.id === id) : null;
+  const selectedLocation = a?.location_id ? STATE.data.locations.find((l) => l.id === a.location_id) : null;
+
   return `
     <form data-form="asset" data-id="${id || ""}" class="${css({ display: "flex", flexDirection: "column", gap: "6" })}">
+      <div>
+        <label class="${labelClass}">Gambar Aset</label>
+        <div class="${css({ display: "flex", alignItems: "center", gap: "4" })}">
+          <div id="assetPhotoPreview" class="${css({ width: "24", height: "24", borderRadius: "lg", bg: "slate.100", border: "1px solid", borderColor: "slate.200", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 })}">
+            ${a?.photo_url ? `<img src="${escapeHTML(a.photo_url)}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="color:#94a3b8;font-size:11px;">Tiada gambar</span>`}
+          </div>
+          <input type="file" id="assetPhotoInput" accept="image/*" class="${css({ fontSize: "sm" })}" />
+        </div>
+      </div>
+
+      ${id ? "" : `<div class="${css({ bg: "info.50", border: "1px solid", borderColor: "info.500/30", borderRadius: "lg", p: "3", fontSize: "xs", color: "info.700" })}">No. Unik ID akan dijana secara automatik oleh sistem selepas disimpan.</div>`}
+
       <div class="${formGrid}">
         <div style="grid-column:1/-1;">
           <label class="${labelClass}">Keterangan Aset <span style="color:#ef4444;">*</span></label>
           <input type="text" name="description" required value="${escapeHTML(a?.description)}" class="${inputClass}" />
-        </div>
-        <div>
-          <label class="${labelClass}">No. Unik ID <span style="color:#ef4444;">*</span></label>
-          <input type="text" name="unique_id" required value="${escapeHTML(a?.unique_id)}" placeholder="cth. BIO-0001" class="${inputClass}" />
         </div>
         <div>
           <label class="${labelClass}">No. Siri Pendaftaran</label>
@@ -108,7 +123,7 @@ export function renderAssetForm(id?: string | null): string {
         </div>
         <div>
           <label class="${labelClass}">Tempat Penempatan</label>
-          <select name="location_id" class="${inputClass}"><option value="">-- Pilih --</option>${STATE.data.locations.map((l) => `<option value="${l.id}" ${a?.location_id === l.id ? "selected" : ""}>${escapeHTML(l.name)}</option>`).join("")}</select>
+          <select name="location_id" id="assetLocationSelect" class="${inputClass}"><option value="">-- Pilih --</option>${STATE.data.locations.map((l) => `<option value="${l.id}" ${a?.location_id === l.id ? "selected" : ""}>${escapeHTML(l.name)}</option>`).join("")}</select>
         </div>
         <div>
           <label class="${labelClass}">Pegawai / PIC</label>
@@ -119,8 +134,8 @@ export function renderAssetForm(id?: string | null): string {
           <input type="date" name="placement_date" value="${a?.placement_date || ""}" class="${inputClass}" />
         </div>
         <div>
-          <label class="${labelClass}">Kod Penempatan</label>
-          <input type="text" name="placement_code" value="${escapeHTML(a?.placement_code)}" placeholder="cth. 080311/BGN" class="${inputClass}" />
+          <label class="${labelClass}">Kod Penempatan <span class="${css({ fontWeight: "normal", color: "slate.400" })}">(ikut lokasi)</span></label>
+          <input type="text" id="assetPlacementCode" readonly value="${escapeHTML(selectedLocation?.code || a?.placement_code || "")}" placeholder="-- Pilih lokasi dahulu --" class="${inputClass}" style="background:#f1f5f9;color:#64748b;cursor:not-allowed;" />
         </div>
         <div>
           <label class="${labelClass}">Keperluan Selenggara/Kalibrasi?</label>
@@ -139,7 +154,7 @@ export function renderAssetForm(id?: string | null): string {
         </div>
       </div>
       <div class="${formActions}">
-        <button type="submit" data-submitlabel="Simpan Rekod Aset" class="${buttonRecipe({ variant: "primary" })}">Simpan Rekod Aset</button>
+        <button type="submit" class="${buttonRecipe({ variant: "primary" })}">Simpan Rekod Aset</button>
       </div>
     </form>`;
 }
@@ -155,18 +170,45 @@ export function renderAssetProfile(id: string): string {
       <p class="${css({ fontWeight: "medium", color: "slate.800", fontSize: "sm" })}">${value || "-"}</p>
     </div>`;
 
+  const historyBox = (title: string, kind: string, icon: string) => {
+    const items = timeline.filter((t) => t.kind === kind);
+    return `
+      <div class="${card}">
+        <div class="${cardHeader}"><h3 class="${css({ fontWeight: "bold", color: "slate.800", fontSize: "sm" })}">${icon} ${title} (${items.length})</h3></div>
+        <div class="${css({ maxHeight: "72", overflowY: "auto" })}">
+          ${items.length ? items.map((it) => `
+            <div class="${css({ px: "4", py: "3", borderBottom: "1px solid", borderColor: "slate.100" })}">
+              <div class="${css({ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "2" })}">
+                <span class="${css({ fontSize: "sm", fontWeight: "medium", color: "slate.800" })}">${escapeHTML(it.label)}</span>
+                <span class="${css({ fontSize: "xs", color: "slate.400", flexShrink: 0 })}">${formatDate(it.date)}</span>
+              </div>
+              ${it.detail ? `<p class="${css({ fontSize: "xs", color: "slate.500", mt: "0.5" })}">${escapeHTML(it.detail)}</p>` : ""}
+            </div>`).join("") : `<p class="${emptyState}">Tiada rekod.</p>`}
+        </div>
+      </div>`;
+  };
+
   return `
-    <div class="${css({ display: "flex", flexDirection: "column", gap: "6" })}">
-      <div>
-        <h2 class="${css({ fontSize: "xl", fontWeight: "bold", color: "slate.900" })}">${escapeHTML(a.description)}</h2>
-        <div class="${css({ display: "flex", gap: "2", mt: "1", alignItems: "center", flexWrap: "wrap" })}">
-          <span class="${css({ fontFamily: "mono", fontWeight: "bold", fontSize: "sm", color: "primary.500", bg: "primary.50", px: "2", py: "0.5", borderRadius: "md" })}">${escapeHTML(a.unique_id)}</span>
-          <span class="${badgeRecipe({ tone: statusTone(a.status) })}">${escapeHTML(a.status)}</span>
+    <div id="assetProfilePrintArea" class="${css({ display: "flex", flexDirection: "column", gap: "6" })}">
+      <div class="${css({ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2" })} print-hide">
+        <button data-action="backToAssetsList" class="${css({ fontSize: "sm", fontWeight: "semibold", color: "primary.500", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "1", _hover: { textDecoration: "underline" } })}">&larr; Kembali ke Senarai Aset</button>
+        <button data-action="printAssetProfile" class="${buttonRecipe({ variant: "outline", size: "sm" })}">&#128438; Cetak Profil</button>
+      </div>
+
+      <div class="${css({ display: "flex", gap: "5", flexWrap: "wrap", alignItems: "flex-start" })}">
+        <div class="${css({ flex: "1", minWidth: "200px" })}">
+          <h2 class="${css({ fontSize: "xl", fontWeight: "bold", color: "slate.900" })}">${escapeHTML(a.description)}</h2>
+          <div class="${css({ display: "flex", gap: "2", mt: "1", alignItems: "center", flexWrap: "wrap" })}">
+            <span class="${css({ fontFamily: "mono", fontWeight: "bold", fontSize: "sm", color: "primary.500", bg: "primary.50", px: "2", py: "0.5", borderRadius: "md" })}">${escapeHTML(a.registration_no || "Tiada No. Pendaftaran")}</span>
+            <span class="${badgeRecipe({ tone: statusTone(a.status) })}">${escapeHTML(a.status)}</span>
+          </div>
+        </div>
+        <div class="${css({ width: "32", height: "32", borderRadius: "xl", bg: "slate.100", border: "1px solid", borderColor: "slate.200", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" })}">
+          ${a.photo_url ? `<img src="${escapeHTML(a.photo_url)}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="color:#94a3b8;font-size:11px;">Tiada gambar</span>`}
         </div>
       </div>
 
       <div class="${css({ display: "grid", gridTemplateColumns: { base: "1fr 1fr", sm: "1fr 1fr 1fr" }, gap: "4", bg: "slate.50", p: "5", borderRadius: "xl", border: "1px solid", borderColor: "slate.200" })}">
-        ${field("No. Siri Pendaftaran", escapeHTML(a.registration_no))}
         ${field("Kategori", escapeHTML(getCategoryName(a.category_id)))}
         ${field("Tempat Penempatan", escapeHTML(getLocationName(a.location_id)))}
         ${field("Kod Penempatan", escapeHTML(a.placement_code))}
@@ -183,29 +225,14 @@ export function renderAssetProfile(id: string): string {
       </div>
 
       <div>
-        <h3 class="${css({ fontSize: "sm", fontWeight: "bold", color: "slate.800", textTransform: "uppercase", letterSpacing: "wide", mb: "3" })}">Jejak Aktiviti / Sejarah Aset (${timeline.length})</h3>
-        <div class="${css({ display: "flex", flexDirection: "column", gap: "0" })}">
-          ${timeline.length ? timeline.map((item) => `
-            <div class="${css({ display: "flex", gap: "3", py: "3", borderBottom: "1px solid", borderColor: "slate.100" })}">
-              <div class="${css({ width: "20", flexShrink: 0, fontSize: "xs", color: "slate.400", pt: "0.5" })}">${formatDate(item.date)}</div>
-              <div class="${css({ flex: "1" })}">
-                <span class="${badgeRecipe({ tone: kindTone(item.kind) })}" style="margin-right:8px;">${item.kind}</span>
-                <span class="${css({ fontSize: "sm", fontWeight: "medium", color: "slate.800" })}">${escapeHTML(item.label)}</span>
-                ${item.detail ? `<span class="${css({ fontSize: "xs", color: "slate.500" })}"> — ${escapeHTML(item.detail)}</span>` : ""}
-              </div>
-            </div>`).join("") : `<p class="${emptyState}">Tiada sejarah aktiviti direkodkan untuk aset ini.</p>`}
+        <h3 class="${css({ fontSize: "sm", fontWeight: "bold", color: "slate.800", textTransform: "uppercase", letterSpacing: "wide", mb: "3" })}">Jejak Aktiviti / Sejarah Aset</h3>
+        <div class="${css({ display: "grid", gridTemplateColumns: { base: "1fr", lg: "1fr 1fr" }, gap: "4" })}">
+          ${historyBox("Sejarah Penyelenggaraan", "Selenggara", "&#128295;")}
+          ${historyBox("Sejarah Pergerakan &amp; Pinjaman", "Pergerakan", "&#128230;")}
+          ${historyBox("Sejarah Kerosakan &amp; Pembaikan", "Kerosakan", "&#9888;")}
+          ${historyBox("Sejarah Pelupusan", "Pelupusan", "&#128465;")}
+          ${historyBox("Sejarah Pemeriksaan", "Pemeriksaan", "&#128269;")}
         </div>
       </div>
     </div>`;
-}
-
-function kindTone(kind: string): "info" | "purple" | "danger" | "neutral" | "warning" {
-  switch (kind) {
-    case "Pemeriksaan": return "info";
-    case "Pergerakan": return "purple";
-    case "Selenggara": return "warning";
-    case "Kerosakan": return "danger";
-    case "Pelupusan": return "neutral";
-    default: return "neutral";
-  }
 }

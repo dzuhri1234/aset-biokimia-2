@@ -53,6 +53,20 @@ yang tidak dibenarkan.
 └── .github/workflows/deploy.yml    # build + deploy automatik ke GitHub Pages
 ```
 
+## Kemaskini v1.2.0 (Ogos 2026) — Cara Pasang
+
+1. **Jalankan SQL tambahan**: `sql/06_kemaskini_v3.sql` dalam SQL Editor Supabase (selamat, tidak memadam data).
+2. **Gantikan fail projek**: sama seperti kemaskini v1.1.0 - salin semua fail dalam pakej ke atas folder projek sedia ada, commit & push melalui GitHub Desktop.
+
+## Kemaskini v1.1.0 (Ogos 2026) — Cara Pasang
+
+Jika anda sudah menjalankan sistem versi asal (v1.0.0), ikut langkah ini untuk naik taraf tanpa kehilangan data:
+
+1. **Jalankan SQL tambahan**: dalam SQL Editor projek Supabase anda, jalankan `sql/05_kemaskini_v2.sql`. Fail ini **selamat** - ia hanya menambah lajur/jadual baharu, tidak memadam data sedia ada.
+2. **Semak kod lokasi**: skrip di atas cuba teka Kod Penempatan setiap lokasi berdasarkan data lama. Pergi ke **Lokasi Penempatan** dalam sistem dan sahkan/betulkan kod bagi setiap lokasi (terutama mana-mana yang masih kosong atau berkongsi kod dengan lokasi lain).
+3. **Gantikan fail projek**: salin SEMUA fail dalam pakej kemaskini ini ke atas folder projek sedia ada anda (folder yang disambungkan ke GitHub Desktop) - **timpa** fail lama. Jangan padam folder `.git` yang ada di dalamnya.
+4. Dalam **GitHub Desktop**, semak senarai "Changes", commit, dan "Push origin" seperti biasa. GitHub Actions akan build & deploy semula secara automatik.
+
 ## Pemasangan (Setup)
 
 ### 1. Cipta projek Supabase
