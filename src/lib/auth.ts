@@ -6,18 +6,18 @@ import { fetchAllData } from "./data";
 import { showToast } from "./utils";
 
 export async function initAuth() {
-  supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (session) {
-      STATE.session = { userId: session.user.id, email: session.user.email || "" };
-      const ok = await loadProfileAndPermissions();
-      if (!ok) {
-        // Akaun auth wujud tetapi tiada profil/tidak aktif - jangan biarkan masuk
-        await supabase.auth.signOut();
-        return;
-      }
-      await fetchAllData();
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      if (session) STATE.session = { userId: session.user.id, email: session.user.email || "" };
+      STATE.authMode = "passwordRecovery";
       STATE.loading = false;
       rerender();
+      return;
+    }
+    if (session) {
+      STATE.session = { userId: session.user.id, email: session.user.email || "" };
+      if (STATE.authMode === "passwordRecovery") return; // tunggu pengguna tetapkan kata laluan baharu dulu
+      await completeLogin();
     } else {
       STATE.session = null;
       STATE.profile = null;
@@ -25,6 +25,18 @@ export async function initAuth() {
       rerender();
     }
   });
+}
+
+async function completeLogin() {
+  const ok = await loadProfileAndPermissions();
+  if (!ok) {
+    await supabase.auth.signOut();
+    return;
+  }
+  await fetchAllData();
+  STATE.loading = false;
+  STATE.authMode = "login";
+  rerender();
 }
 
 async function loadProfileAndPermissions(): Promise<boolean> {
@@ -69,6 +81,21 @@ async function loadProfileAndPermissions(): Promise<boolean> {
 export async function handleLogin(email: string, password: string): Promise<string | null> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return error.message;
+  return null;
+}
+
+export async function handleForgotPassword(email: string): Promise<string | null> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  if (error) return error.message;
+  return null;
+}
+
+export async function handleUpdatePasswordAfterRecovery(newPassword: string): Promise<string | null> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return error.message;
+  await completeLogin();
   return null;
 }
 

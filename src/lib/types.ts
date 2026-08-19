@@ -45,6 +45,7 @@ export interface Asset {
   category_id: string | null;
   last_maintenance_year: number | null;
   notes: string | null;
+  photo_url: string | null;
   status: AssetStatus;
   pic_id: string | null;
   is_deleted: boolean;
@@ -65,11 +66,19 @@ export interface Movement {
   purpose: string; borrower_name: string | null; out_date: string;
   expected_return_date: string | null; actual_return_date: string | null;
   status: "Dalam Pergerakan" | "Dipulangkan";
+  // Medan selaras borang rasmi KEW.PA-9
+  applicant_name: string | null; applicant_position: string | null; division: string | null;
+  used_at: string | null; issuer_name: string | null;
+  approval_status: "Menunggu Kelulusan" | "Diluluskan" | "Tidak Diluluskan";
+  approved_by_name: string | null; approved_by_position: string | null; approved_date: string | null;
+  received_by_name: string | null; received_by_position: string | null; received_date: string | null;
 }
 export interface MaintenanceRecord {
-  id: string; asset_id: string; type: string; vendor: string | null;
+  id: string; asset_id: string; type: "Pencegahan" | "Pembaikan"; vendor: string | null;
+  work_order_no: string | null;
   start_date: string; end_date: string | null; cost: number | null;
   status: "Dijadualkan" | "Sedang Diselenggara" | "Selesai"; notes: string | null;
+  confirmed_by_name: string | null; confirmed_by_position: string | null;
 }
 export interface DamageRecord {
   id: string; asset_id: string; damage_type: string; report_date: string;

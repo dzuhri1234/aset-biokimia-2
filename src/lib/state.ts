@@ -17,6 +17,7 @@ export interface ModalState {
 export interface AppState {
   session: { userId: string; email: string } | null;
   profile: Profile | null;
+  authMode: "login" | "forgotPassword" | "passwordRecovery";
   permissions: Record<ModuleName, AccessLevel>;
   loading: boolean;
   view: ViewName;
@@ -24,7 +25,8 @@ export interface AppState {
   modal: ModalState | null;
   sidebarOpen: boolean;
   assetPage: number;
-  filters: { search: string; status: string };
+  filters: { search: string; status: string; location: string };
+  maintenanceStatusFilter: string;
   data: {
     assets: Asset[];
     locations: Location[];
@@ -45,6 +47,7 @@ export const ASSET_PAGE_SIZE = 25;
 export const STATE: AppState = {
   session: null,
   profile: null,
+  authMode: "login",
   permissions: {
     assets: "none", inspections: "none", movements: "none",
     maintenance: "none", damage: "none", disposals: "none", master_data: "none",
@@ -55,7 +58,8 @@ export const STATE: AppState = {
   modal: null,
   sidebarOpen: false,
   assetPage: 1,
-  filters: { search: "", status: "" },
+  filters: { search: "", status: "", location: "" },
+  maintenanceStatusFilter: "",
   data: {
     assets: [], locations: [], categories: [], personnel: [],
     inspections: [], movements: [], maintenance: [], damage: [], disposals: [],
