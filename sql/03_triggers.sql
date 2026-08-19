@@ -90,3 +90,24 @@ $$;
 drop trigger if exists trg_sync_last_check on inspections;
 create trigger trg_sync_last_check after insert on inspections
   for each row execute function sync_asset_last_check();
+
+-- ------------------------------------------------------------
+-- No. Unik ID (unique_id) dijana automatik (BIO-0001, BIO-0002, ...)
+-- supaya pengguna tidak perlu - dan tidak boleh - taip sendiri.
+-- ------------------------------------------------------------
+create sequence if not exists asset_unique_id_seq;
+
+create or replace function assign_unique_id()
+returns trigger language plpgsql as $$
+begin
+  if new.unique_id is null or trim(new.unique_id) = '' then
+    new.unique_id := 'BIO-' || lpad(nextval('asset_unique_id_seq')::text, 4, '0');
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_assign_unique_id on assets;
+create trigger trg_assign_unique_id
+  before insert on assets
+  for each row execute function assign_unique_id();

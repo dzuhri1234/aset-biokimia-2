@@ -142,3 +142,17 @@ create policy "disposals_update" on disposals for update using (has_module_acces
 -- boleh menulis - lihat 03_triggers.sql)
 -- ------------------------------------------------------------
 create policy "audit_logs_read_admin" on audit_logs for select using (is_admin());
+
+-- ------------------------------------------------------------
+-- STORAN GAMBAR ASET (Supabase Storage)
+-- ------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('asset-photos', 'asset-photos', true)
+on conflict (id) do nothing;
+
+create policy "asset_photos_read" on storage.objects
+  for select using (bucket_id = 'asset-photos');
+create policy "asset_photos_write" on storage.objects
+  for insert with check (bucket_id = 'asset-photos' and has_module_access('assets','edit'));
+create policy "asset_photos_update" on storage.objects
+  for update using (bucket_id = 'asset-photos' and has_module_access('assets','edit'));
