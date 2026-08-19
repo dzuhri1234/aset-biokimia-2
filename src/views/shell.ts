@@ -19,7 +19,7 @@ const NAV_SECTIONS: { title: string; items: { key: ViewName; label: string; modu
     { key: "locations", label: "Lokasi Penempatan", module: "master_data" },
     { key: "categories", label: "Kategori Aset", module: "master_data" },
     { key: "personnel", label: "Pemegang (PIC)", module: "master_data" },
-    { key: "reports", label: "Jana Laporan CSV" },
+    { key: "reports", label: "Jana Laporan" },
   ]},
 ];
 
@@ -99,7 +99,7 @@ function getViewTitle(view: ViewName): string {
     dashboard: "Papan Pemuka", assets: "Senarai Aset Penuh", assetProfile: "Profil Aset",
     movements: "Pergerakan & Pinjaman", maintenance: "Penyelenggaraan Aset", damage: "Laporan Kerosakan",
     inspections: "Pemeriksaan Berkala", disposals: "Pelupusan Aset", locations: "Lokasi Penempatan",
-    categories: "Kategori Aset", personnel: "Pemegang Aset (PIC)", reports: "Pusat Laporan & Eksport CSV",
+    categories: "Kategori Aset", personnel: "Pemegang Aset (PIC)", reports: "Pusat Laporan (CSV / PDF)",
     users: "Pengurusan Pengguna", auditTrail: "Jejak Audit Pangkalan Data",
   };
   return t[view] || "Sistem Aset";
